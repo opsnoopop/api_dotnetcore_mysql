@@ -1,19 +1,20 @@
 services:
-  dotnetcore:
+  api:
     build:
       context: ./
       dockerfile: Dockerfile
     image: dotnet8_minimal_custom
     container_name: container_dotnetcore
     restart: always
-    env_file:
-      - .env
     ports:
       - "80:3000"
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+    env_file:
+      - .env
     networks:
-      network_dotnetcore:
+      network_optest:
         ipv4_address: 172.16.0.11
 
   database:
@@ -36,7 +37,7 @@ services:
       timeout: 3s
       retries: 30
     networks:
-      network_dotnetcore:
+      network_optest:
         ipv4_address: 172.16.0.12
 
   adminer:
@@ -48,12 +49,12 @@ services:
     depends_on:
       - database
     networks:
-      network_dotnetcore:
+      network_optest:
         ipv4_address: 172.16.0.13
 
 networks:
-  network_dotnetcore:
-    name: global_dotnetcore
+  network_optest:
+    name: global_optest
     ipam:
       driver: default
       config:
