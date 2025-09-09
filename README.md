@@ -115,11 +115,11 @@ oltp_read_write cleanup; # step 3 cleanup ลบ table
 ### sysbench step 1 prepare
 ```bash
 docker run \
---name container_ubuntu_tool \
+--name container_sysbench \
 --rm \
 -it \
 --network global_optest \
-opsnoopop/ubuntu-tool:1.0 \
+opsnoopop/ubuntu:24.04 \
 sysbench \
 --threads=2 \
 --time=10 \
@@ -137,11 +137,12 @@ oltp_read_write prepare;
 ### sysbench step 2 run test
 ```bash
 docker run \
---name container_ubuntu_tool \
+--name container_sysbench \
 --rm \
 -it \
 --network global_optest \
-opsnoopop/ubuntu-tool:1.0 \
+-v ./sysbench/:/sysbench/ \
+opsnoopop/ubuntu:24.04 \
 sysbench \
 --threads=2 \
 --time=10 \
@@ -153,17 +154,17 @@ sysbench \
 --mysql-db="testdb" \
 --tables=10 \
 --table-size=100000 \
-oltp_read_write run > sysbench_raw_$(date +"%Y%m%d_%H%M%S").txt
+oltp_read_write run > ./sysbench/sysbench_raw_$(date +"%Y%m%d_%H%M%S").txt
 ```
 
 ### sysbench step 3 cleanup
 ```bash
 docker run \
---name container_ubuntu_tool \
+--name container_sysbench \
 --rm \
 -it \
 --network global_optest \
-opsnoopop/ubuntu-tool:1.0 \
+opsnoopop/ubuntu:24.04 \
 sysbench \
 --threads=2 \
 --time=10 \
@@ -188,7 +189,7 @@ docker run \
 --rm \
 -it \
 --network global_optest \
--v ./k6/:/k6 \
+-v ./k6/:/k6/ \
 grafana/k6:1.1.0 \
 run /k6/k6_1_ramping_health_check.js
 ```
@@ -200,7 +201,7 @@ docker run \
 --rm \
 -it \
 --network global_optest \
--v ./k6/:/k6 \
+-v ./k6/:/k6/ \
 grafana/k6:1.1.0 \
 run /k6/k6_2_ramping_create_user.js
 ```
@@ -212,19 +213,48 @@ docker run \
 --rm \
 -it \
 --network global_optest \
--v ./k6/:/k6 \
+-v ./k6/:/k6/ \
 grafana/k6:1.1.0 \
 run /k6/k6_3_ramping_get_user_by_id.js
 ```
 
-### check entrypoint grafana/k6
+
+## Test Performance by wrk
+
+### wrk test Health Check
 ```bash
 docker run \
---name container_k6 \
+--name container_wrk \
 --rm \
 -it \
---entrypoint \
-/bin/sh grafana/k6:1.1.0
+--network global_optest \
+-v ./wrk/:/wrk/ \
+opsnoopop/ubuntu:24.04 \
+wrk -c1000 -t2 -d10s http://172.16.0.11:3000
+```
+
+### wrk test Insert Create user
+```bash
+docker run \
+--name container_wrk \
+--rm \
+-it \
+--network global_optest \
+-v ./wrk/:/wrk/ \
+opsnoopop/ubuntu:24.04 \
+wrk -c1000 -t2 -d10s -s /wrk/create_user.lua http://172.16.0.11:3000/users
+```
+
+### wrk test Select Get user by id
+```bash
+docker run \
+--name container_wrk \
+--rm \
+-it \
+--network global_optest \
+-v ./wrk/:/wrk/ \
+opsnoopop/ubuntu:24.04 \
+wrk -c1000 -t2 -d10s http://172.16.0.11:3000/users/1
 ```
 
 
